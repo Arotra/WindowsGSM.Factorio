@@ -35,7 +35,7 @@ namespace WindowsGSM.Plugins
 
 
         public string FullName = "Factorio Dedicated Server";
-        public override string StartPath => @"bin/x64/Factorio.exe";
+        public override string StartPath => @"bin\x64\Factorio.exe";
         public bool AllowsEmbedConsole = true;
         public int PortIncrements = 2;
         public object QueryMethod = new A2S(); // Query method should be use on current server type. Accepted value: null or new A2S() or new FIVEM() or new UT3()
@@ -47,23 +47,18 @@ namespace WindowsGSM.Plugins
         public string Additional = "";
 
         // - Create a default cfg for the game server after installation
-        public async void CreateServerCFG() {}
+        public async void CreateServerCFG() { }
 
         // - Start server function, return its Process to WindowsGSM    
         public async Task<Process> Start()
         {
             string shipWorkingPath = Functions.ServerPath.GetServersServerFiles(_serverData.ServerID); // c:\windowsgsm\servers\1\serverfiles\
-            string shipWorkingBinx64Path = Path.Combine(ServerPath.GetServersServerFiles(_serverData.ServerID, @"bin/x64/")).ToString(); // c:\windowsgsm\servers\1\serverfiles\bin\x64
-            string shipWorkingDataPath = Path.Combine(ServerPath.GetServersServerFiles(_serverData.ServerID, @"data/")).ToString(); // c:\windowsgsm\servers\1\serverfiles\data
+            string shipWorkingBinx64Path = Path.Combine(ServerPath.GetServersServerFiles(_serverData.ServerID, @"bin\x64\")).ToString(); // c:\windowsgsm\servers\1\serverfiles\bin\x64
+            string shipWorkingDataPath = Path.Combine(ServerPath.GetServersServerFiles(_serverData.ServerID, @"data\")).ToString(); // c:\windowsgsm\servers\1\serverfiles\data
             string shipWorkingEXEPathFull = Path.Combine(ServerPath.GetServersServerFiles(_serverData.ServerID, StartPath)); // c:\windowsgsm\servers\1\serverfiles\ + bin\x64\factorio.exe
 
-            // Flip the backslashes for forwards slashes. Unsure if this was necessary.
-            shipWorkingBinx64Path = shipWorkingBinx64Path.Replace(@"\","/");
-            shipWorkingDataPath = shipWorkingDataPath.Replace(@"\","/");
-            shipWorkingEXEPathFull = shipWorkingEXEPathFull.Replace(@"\","/");
-
             // Does \bin\ path exist?
-            if(!Directory.Exists(shipWorkingBinx64Path))
+            if (!Directory.Exists(shipWorkingBinx64Path))
             {
                 Error = $"Directory not found - ({shipWorkingBinx64Path})";
                 return null;
@@ -143,41 +138,23 @@ namespace WindowsGSM.Plugins
         {
             await Task.Run(() =>
             {
-                if (p.StartInfo.CreateNoWindow)
+                if (p.StartInfo.RedirectStandardInput)
                 {
-                    p.Kill();
+                    // Send "stop" command to StandardInput stream if EmbedConsole is on
+                    p.StandardInput.WriteLine("/server-save");
+                    p.StandardInput.WriteLine("/shout Server Shutdown in 10sec");
+                    Task.Run(async delegate { await Task.Delay(10000); }).Wait();
+                    p.StandardInput.WriteLine("/quit");
                 }
                 else
                 {
-                    Functions.ServerConsole.SendMessageToMainWindow(p.MainWindowHandle, "shutdown");
+                    // Send "stop" command to game server process MainWindow
+                    ServerConsole.SendMessageToMainWindow(p.MainWindowHandle, "/server-save");
+                    ServerConsole.SendMessageToMainWindow(p.MainWindowHandle, "/shout Server Shutdown in 10sec");
+                    Task.Run(async delegate { await Task.Delay(10000); }).Wait();
+                    ServerConsole.SendMessageToMainWindow(p.MainWindowHandle, "/quit");
                 }
             });
         }
-
-
-
-      /*  public bool SteamCMDAgent.IsInstallValid()
-        {
-            return File.Exists(Functions.ServerPath.GetServersServerFiles(_serverData.ServerID, StartPath));
-        }
-
-        public bool IsImportValid(string path)
-        {
-            string importPath = Path.Combine(path, StartPath);
-            Error = $"Invalid Path! Fail to find {Path.GetFileName(StartPath)}";
-            return File.Exists(importPath);
-        }
-
-        public string GetLocalBuild()
-        {
-            var localBuild = new Installer.SteamCMD();
-            return localBuild.GetLocalBuild(_serverData.ServerID, AppId);
-        }
-            *//*
-        public async Task<string> Factorio.GetRemoteBuild()
-        {
-            var remoteBuild = new Installer.SteamCMDAgent();
-            return await remoteBuild.GetRemoteBuild(AppId);
-        } */
     }
 }
